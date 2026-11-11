@@ -1,7 +1,7 @@
 # Xiaomi Domotique Mobile — feuille de route
 
 ## Objectif
-Personnaliser LuCI Mobile (Flutter, GPL-3.0) pour surveiller un routeur Xiaomi OpenWrt et les appareils domotiques depuis un iPhone, avec une interface française soignée. Ne pas remplacer LuCI/Argon.
+Personnaliser LuCI Mobile (Flutter, GPL-3.0) pour surveiller un routeur Xiaomi OpenWrt et les équipements réseau depuis un iPhone, avec une interface française soignée. L'identification spécifique des appareils Tuya est exclue à la demande de l'utilisateur. Ne pas remplacer LuCI/Argon.
 
 ## Contraintes non négociables
 - Ne pas modifier les paramètres réseau du routeur durant le développement.
@@ -21,7 +21,7 @@ Personnaliser LuCI Mobile (Flutter, GPL-3.0) pour surveiller un routeur Xiaomi O
 
 ## Phase 2 — Surveillance en lecture seule
 - Tableau de bord : état WAN, Wi-Fi, CPU, RAM, disponibilité et débit global, si remontés par RPC.
-- Inventaire : nom, IP, MAC, interface, dernier état connu ; catégories locales personnalisables.
+- Inventaire réseau standard : nom, IP, MAC, interface et dernier état connu selon les données réellement disponibles. Ne pas ajouter de reconnaissance Tuya ni de catégorisation domotique spécifique.
 - Nouveaux équipements : comparer les identifiants connus à une liste locale, avec gestion des adresses MAC privées/aléatoires et des faux positifs.
 - Sécurité : afficher uniquement des indicateurs étayés par les données OpenWrt disponibles.
 
