@@ -537,5 +537,14 @@
   "targetPlatform": "Zielplattform",
   "kernelVersion": "Kernel-Version",
   "systemDetails": "Systemdetails",
-  "allowedIps": "Erlaubte IPs"
+  "allowedIps": "Erlaubte IPs",
+  "wanLink": "WAN-Verbindung",
+  "presenceConfirmed": "Online bestätigt",
+  "presenceUnknown": "Anwesenheit unbestätigt",
+  "recentlySeenDevice": "Kürzlich entdeckt",
+  "localMacAddress": "Private oder lokal zugewiesene MAC",
+  "managementConnection": "Verbindung zu LuCI",
+  "wanInputPolicy": "Eingangsrichtlinie der WAN-Zone",
+  "configuredWanForwards": "Aktive WAN-Portweiterleitungen",
+  "firewallConfigSnapshot": "Von OpenWrt gemeldete Konfiguration"
 }

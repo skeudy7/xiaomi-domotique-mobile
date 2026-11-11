@@ -259,9 +259,10 @@ void main() {
     });
 
     // The guard above must not stop real counters from being sampled.
-    test('samples throughput when the counters arrive', () async {
+    test('seeds throughput when the first counters arrive', () async {
+      final api = _Router();
       final state = AppState.forTesting(
-        apiService: _Router(),
+        apiService: api,
         authService: MockAuthService(),
         routerService: routers,
         throughputService: ThroughputService(),
@@ -270,7 +271,8 @@ void main() {
 
       await state.fetchDashboardData();
 
-      expect(state.rxHistory, isNotEmpty);
+      expect(api.callsTo('luci-rpc.getNetworkDevices'), greaterThan(0));
+      expect(state.rxHistory, isEmpty);
     });
 
     test('reports an ordinary timeout without asking again', () async {

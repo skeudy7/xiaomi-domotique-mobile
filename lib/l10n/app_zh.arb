@@ -537,5 +537,14 @@
   "targetPlatform": "目标平台",
   "kernelVersion": "内核版本",
   "systemDetails": "系统详情",
-  "allowedIps": "允许的 IP"
+  "allowedIps": "允许的 IP",
+  "wanLink": "WAN 链路",
+  "presenceConfirmed": "已确认在线",
+  "presenceUnknown": "在线状态未确认",
+  "recentlySeenDevice": "最近发现",
+  "localMacAddress": "私有或本地分配的 MAC",
+  "managementConnection": "连接 LuCI",
+  "wanInputPolicy": "WAN 区域入站策略",
+  "configuredWanForwards": "已启用的 WAN 端口转发",
+  "firewallConfigSnapshot": "OpenWrt 报告的配置"
 }

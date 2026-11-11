@@ -537,5 +537,14 @@
   "targetPlatform": "Целевая платформа",
   "kernelVersion": "Версия ядра",
   "systemDetails": "Сведения о системе",
-  "allowedIps": "Разрешённые IP"
+  "allowedIps": "Разрешённые IP",
+  "wanLink": "Подключение WAN",
+  "presenceConfirmed": "Присутствие подтверждено",
+  "presenceUnknown": "Присутствие не подтверждено",
+  "recentlySeenDevice": "Недавно обнаружено",
+  "localMacAddress": "Частный или локальный MAC",
+  "managementConnection": "Подключение к LuCI",
+  "wanInputPolicy": "Политика входа зоны WAN",
+  "configuredWanForwards": "Активные перенаправления портов WAN",
+  "firewallConfigSnapshot": "Конфигурация OpenWrt"
 }

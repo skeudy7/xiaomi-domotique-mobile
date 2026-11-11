@@ -537,5 +537,14 @@
   "targetPlatform": "ターゲットプラットフォーム",
   "kernelVersion": "カーネルバージョン",
   "systemDetails": "システムの詳細",
-  "allowedIps": "許可された IP"
+  "allowedIps": "許可された IP",
+  "wanLink": "WAN 接続",
+  "presenceConfirmed": "接続を確認済み",
+  "presenceUnknown": "接続状況不明",
+  "recentlySeenDevice": "最近検出",
+  "localMacAddress": "プライベートまたはローカル MAC",
+  "managementConnection": "LuCI への接続",
+  "wanInputPolicy": "WAN ゾーンの入力ポリシー",
+  "configuredWanForwards": "有効な WAN ポート転送",
+  "firewallConfigSnapshot": "OpenWrt が報告した設定"
 }

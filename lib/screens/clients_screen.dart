@@ -8,6 +8,10 @@ import 'package:luci_mobile/models/client.dart';
 import 'package:luci_mobile/screens/client_detail_screen.dart';
 import 'package:luci_mobile/state/event_feed_notifier.dart';
 import 'package:luci_mobile/services/api_service.dart';
+import 'package:luci_mobile/services/known_devices.dart';
+import 'package:luci_mobile/services/client_presence.dart';
+import 'package:luci_mobile/services/secure_storage_service.dart';
+import 'package:luci_mobile/utils/logger.dart';
 import 'package:luci_mobile/widgets/luci_app_bar.dart';
 import 'package:luci_mobile/design/luci_design_system.dart';
 import 'package:luci_mobile/widgets/luci_loading_states.dart';
@@ -17,6 +21,10 @@ import 'package:luci_mobile/navigation/tab_bar_inset.dart';
 import 'package:luci_mobile/l10n/luci_localizations.dart';
 import 'package:luci_mobile/widgets/platform_ui/platform_ui.dart';
 
+final _knownDevicesProvider = Provider<KnownDevices>(
+  (ref) => KnownDevices(SecureStorageService()),
+);
+
 class ClientsScreen extends ConsumerStatefulWidget {
   const ClientsScreen({super.key});
 
@@ -25,6 +33,8 @@ class ClientsScreen extends ConsumerStatefulWidget {
 }
 
 class _ClientsScreenState extends ConsumerState<ClientsScreen> {
+  int _inventoryGeneration = 0;
+  Set<String> _recentDevices = const {};
   String _searchQuery = '';
   // Track expansion by client identity (MAC/IP), not list index - indices
   // shift when the search filter or the underlying data reorders the list.
@@ -64,7 +74,11 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     final appState = ref.read(appStateProvider);
     // The router this fetch belongs to, so an answer that arrives after a
     // switch is not folded into the next router's feed.
-    final routerId = ref.read(sessionProvider)?.routerId;
+    final session = ref.read(sessionProvider);
+    final routerId = session?.routerId;
+    final knownDevices = ref.read(_knownDevicesProvider);
+    final generation = ++_inventoryGeneration;
+    _recentDevices = const {};
     // Falls back to the cheaper single-router path when there is nothing to
     // aggregate. The stored preference is left alone, so adding a second
     // router later restores the user's choice rather than resetting it.
@@ -82,10 +96,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     // it should cost the router nothing extra to know what changed.
     _clientsFuture = appState
         .fetchClientsForSelectedRouter()
-        .then((clients) {
+        .then((clients) async {
           // The screen may have been left while the fetch was in flight;
           // `ref` is unusable then, and the list itself is still wanted.
-          if (!mounted) return clients;
+          if (!mounted || ref.read(sessionProvider) != session) return clients;
           unawaited(
             ref
                 .read(eventFeedProvider.notifier)
@@ -96,6 +110,21 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                   routerId: routerId,
                 ),
           );
+          if (session != null && !session.reviewerMode) {
+            try {
+              final recent = await knownDevices.observe(
+                session.routerId,
+                clients,
+              );
+              if (mounted &&
+                  generation == _inventoryGeneration &&
+                  ref.read(sessionProvider) == session) {
+                _recentDevices = recent;
+              }
+            } catch (error, stack) {
+              Logger.exception('Could not update known devices', error, stack);
+            }
+          }
           return clients;
         })
         .onError<Object>((error, stack) {
@@ -104,7 +133,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           // router that answered and refused (a permission error, say) is
           // reachable, and says nothing about its clients — so no
           // observation at all rather than a false "unreachable".
-          if (mounted && isRouterUnreachable(error)) {
+          if (mounted &&
+              ref.read(sessionProvider) == session &&
+              isRouterUnreachable(error)) {
             unawaited(
               ref
                   .read(eventFeedProvider.notifier)
@@ -223,10 +254,15 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     final clients = aggregatedClients;
 
                     final filteredClients = clients.where((client) {
-                      final query = _searchQuery.toLowerCase();
+                      final query = _searchQuery.trim().toLowerCase();
                       return client.hostname.toLowerCase().contains(query) ||
                           client.ipAddress.toLowerCase().contains(query) ||
                           client.macAddress.toLowerCase().contains(query) ||
+                          (client.ipv6Addresses?.any(
+                                (address) =>
+                                    address.toLowerCase().contains(query),
+                              ) ??
+                              false) ||
                           (client.vendor != null &&
                               client.vendor!.toLowerCase().contains(query)) ||
                           (client.dnsName != null &&
@@ -335,8 +371,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
 
                                     return LuciSlideTransition(
                                       direction: LuciSlideDirection.up,
-                                      delay: Duration(milliseconds: index * 50),
-                                      distance: 30,
+                                      delay: Duration(
+                                        milliseconds: index.clamp(0, 4) * 25,
+                                      ),
+                                      distance: 8,
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 16.0,
@@ -344,6 +382,11 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                                         ),
                                         child: _UnifiedClientCard(
                                           client: client,
+                                          recentlySeen: _recentDevices.contains(
+                                            KnownDevices.individualMac(
+                                              client.macAddress,
+                                            ),
+                                          ),
                                           isExpanded: isExpanded,
                                           onTap: () {
                                             setState(() {
@@ -388,11 +431,13 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
 
 class _UnifiedClientCard extends StatefulWidget {
   final Client client;
+  final bool recentlySeen;
   final bool isExpanded;
   final VoidCallback onTap;
   final VoidCallback onOpenDetails;
 
   const _UnifiedClientCard({
+    required this.recentlySeen,
     required this.client,
     required this.isExpanded,
     required this.onTap,
@@ -525,7 +570,9 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.client.hostname,
+                            ClientPresence.isUnnamed(widget.client.hostname)
+                                ? context.l10n.unknown
+                                : widget.client.hostname,
                             style: LuciTextStyles.cardTitle(context),
                             semanticsLabel: context.l10n
                                 .clientHostnameSemantics(
@@ -551,6 +598,23 @@ class _UnifiedClientCardState extends State<_UnifiedClientCard>
                               _buildMinimalClientSubtitle(widget.client),
                             ),
                           ),
+                          Text(switch (widget.client.isOnline) {
+                            true => context.l10n.presenceConfirmed,
+                            false => context.l10n.offline,
+                            null => context.l10n.presenceUnknown,
+                          }, style: theme.textTheme.bodySmall),
+                          if (widget.recentlySeen)
+                            Text(
+                              context.l10n.recentlySeenDevice,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                          if (KnownDevices.isLocalMac(widget.client.macAddress))
+                            Text(
+                              context.l10n.localMacAddress,
+                              style: theme.textTheme.bodySmall,
+                            ),
                           if (widget.client.vendor != null &&
                               widget.client.vendor!.isNotEmpty)
                             Text(

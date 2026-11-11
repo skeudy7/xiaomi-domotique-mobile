@@ -8,8 +8,8 @@ void main() {
   test('the destination order is the one the shell renders', () {
     expect(LuciTab.values, [
       LuciTab.dashboard,
-      LuciTab.network,
       LuciTab.clients,
+      LuciTab.network,
       LuciTab.insights,
       LuciTab.settings,
     ]);

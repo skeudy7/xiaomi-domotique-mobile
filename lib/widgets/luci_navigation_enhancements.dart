@@ -11,7 +11,7 @@ class LuciTabTransition extends StatefulWidget {
     super.key,
     required this.child,
     required this.transitionKey,
-    this.duration = const Duration(milliseconds: 350),
+    this.duration = const Duration(milliseconds: 180),
     this.curve = Curves.easeInOutCubic,
   });
 
@@ -43,7 +43,7 @@ class _LuciTabTransitionState extends State<LuciTabTransition>
     );
 
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.0, 0.1),
+      begin: const Offset(0.0, 0.018),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: widget.curve));
 
@@ -67,6 +67,7 @@ class _LuciTabTransitionState extends State<LuciTabTransition>
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
     return SlideTransition(
       position: _slideAnimation,
       child: FadeTransition(opacity: _fadeAnimation, child: widget.child),

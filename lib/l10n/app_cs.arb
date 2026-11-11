@@ -537,5 +537,14 @@
   "targetPlatform": "Cílová platforma",
   "kernelVersion": "Verze jádra",
   "systemDetails": "Podrobnosti o systému",
-  "allowedIps": "Povolené IP"
+  "allowedIps": "Povolené IP",
+  "wanLink": "Připojení WAN",
+  "presenceConfirmed": "Přítomnost potvrzena",
+  "presenceUnknown": "Přítomnost nepotvrzena",
+  "recentlySeenDevice": "Nedávno zjištěno",
+  "localMacAddress": "Soukromá nebo místní MAC",
+  "managementConnection": "Připojení k LuCI",
+  "wanInputPolicy": "Vstupní politika zóny WAN",
+  "configuredWanForwards": "Aktivní přesměrování portů WAN",
+  "firewallConfigSnapshot": "Konfigurace hlášená OpenWrt"
 }

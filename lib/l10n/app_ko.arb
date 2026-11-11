@@ -537,5 +537,14 @@
   "targetPlatform": "대상 플랫폼",
   "kernelVersion": "커널 버전",
   "systemDetails": "시스템 세부 정보",
-  "allowedIps": "허용된 IP"
+  "allowedIps": "허용된 IP",
+  "wanLink": "WAN 연결",
+  "presenceConfirmed": "접속 확인됨",
+  "presenceUnknown": "접속 상태 미확인",
+  "recentlySeenDevice": "최근 발견됨",
+  "localMacAddress": "비공개 또는 로컬 MAC",
+  "managementConnection": "LuCI 연결",
+  "wanInputPolicy": "WAN 영역 입력 정책",
+  "configuredWanForwards": "활성 WAN 포트 포워딩",
+  "firewallConfigSnapshot": "OpenWrt가 보고한 구성"
 }

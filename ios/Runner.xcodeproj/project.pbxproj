@@ -393,7 +393,7 @@
 				DEVELOPMENT_TEAM = X2662V5DT2;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "LuCI Mobile";
+				INFOPLIST_KEY_CFBundleDisplayName = "Xiaomi Domotique";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -584,7 +584,7 @@
 				DEVELOPMENT_TEAM = X2662V5DT2;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "LuCI Mobile";
+				INFOPLIST_KEY_CFBundleDisplayName = "Xiaomi Domotique";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -618,7 +618,7 @@
 				DEVELOPMENT_TEAM = X2662V5DT2;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Runner/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "LuCI Mobile";
+				INFOPLIST_KEY_CFBundleDisplayName = "Xiaomi Domotique";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = (

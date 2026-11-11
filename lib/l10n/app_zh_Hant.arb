@@ -537,5 +537,14 @@
   "targetPlatform": "目標平台",
   "kernelVersion": "核心版本",
   "systemDetails": "系統詳情",
-  "allowedIps": "允許的 IP"
+  "allowedIps": "允許的 IP",
+  "wanLink": "WAN 連線",
+  "presenceConfirmed": "已確認在線",
+  "presenceUnknown": "連線狀態未確認",
+  "recentlySeenDevice": "最近發現",
+  "localMacAddress": "私有或本機指派的 MAC",
+  "managementConnection": "連線至 LuCI",
+  "wanInputPolicy": "WAN 區域輸入原則",
+  "configuredWanForwards": "已啟用的 WAN 連接埠轉送",
+  "firewallConfigSnapshot": "OpenWrt 回報的設定"
 }

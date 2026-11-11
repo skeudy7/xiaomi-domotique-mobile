@@ -537,5 +537,14 @@
   "targetPlatform": "Doelplatform",
   "kernelVersion": "Kernelversie",
   "systemDetails": "Systeemdetails",
-  "allowedIps": "Toegestane IP's"
+  "allowedIps": "Toegestane IP's",
+  "wanLink": "WAN-verbinding",
+  "presenceConfirmed": "Online bevestigd",
+  "presenceUnknown": "Aanwezigheid onbevestigd",
+  "recentlySeenDevice": "Onlangs ontdekt",
+  "localMacAddress": "Privé of lokaal toegewezen MAC",
+  "managementConnection": "Verbinding met LuCI",
+  "wanInputPolicy": "Inkomend beleid WAN-zone",
+  "configuredWanForwards": "Actieve WAN-poortdoorsturingen",
+  "firewallConfigSnapshot": "Configuratie volgens OpenWrt"
 }

@@ -144,7 +144,7 @@ class AppState extends ChangeNotifier {
   bool get isRebooting => _isRebooting;
 
   // Theme mode state
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.dark;
   static const String _themeModeKey = 'themeMode';
 
   // Clients view mode (aggregate across routers)
@@ -286,7 +286,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> _loadThemeMode() async {
     final stored = await _secureStorageService.readValue(_themeModeKey);
-    if (stored == 'dark') {
+    if (stored == null || stored == 'dark') {
       _themeMode = ThemeMode.dark;
     } else if (stored == 'light') {
       _themeMode = ThemeMode.light;
@@ -1636,9 +1636,15 @@ class AppState extends ChangeNotifier {
           wanDeviceNames,
           specificInterface: specificInterface,
         );
-        notifyListeners();
+      } else {
+        if (token != _sessionToken) return;
+        _throughputService?.clear();
       }
+      notifyListeners();
     } catch (e) {
+      if (token != _sessionToken) return;
+      _throughputService?.clear();
+      notifyListeners();
       // Throughput updates are non-critical, but log so persistent failures
       // (e.g. expired session) are visible when debugging.
       Logger.debug('Throughput update failed: $e');
