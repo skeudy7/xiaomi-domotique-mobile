@@ -18,10 +18,58 @@ class InsightsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final isFrench = Localizations.localeOf(context).languageCode == 'fr';
     return Scaffold(
       appBar: LuciAppBar(title: l10n.insights),
       body: ListView(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+            child: Semantics(
+              label: isFrench
+                  ? 'Surveillance locale, informations de sécurité'
+                  : 'Local monitoring, security information',
+              child: Card(
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.shield_outlined,
+                              color: Theme.of(context).colorScheme.primary),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              isFrench ? 'Surveillance domotique' : 'Home network monitoring',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        isFrench
+                            ? 'Consulte les événements, journaux et mesures disponibles sur ton routeur.'
+                            : 'Review the events, logs and measurements available from your router.',
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        isFrench
+                            ? 'Ces informations ne constituent pas un détecteur d’intrusion. Aucun équipement n’est bloqué depuis cet écran.'
+                            : 'This is not an intrusion detector. No devices are blocked from this screen.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
           LuciSectionHeader(l10n.insights),
           LuciHubSection(
             tiles: [
