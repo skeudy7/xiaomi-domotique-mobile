@@ -259,6 +259,67 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            LuciSectionHeader(context.l10n.application),
+            LuciHubSection(
+              tiles: [
+                LuciHubTile(
+                  icon: Icons.router,
+                  iconColor: Theme.of(context).colorScheme.primary,
+                  title: context.l10n.manageRouters,
+                  subtitle: context.l10n.manageRoutersDescription,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ManageRoutersScreen(),
+                      ),
+                    );
+                  },
+                ),
+                LuciHubTile(
+                  icon: Icons.settings_outlined,
+                  iconColor: Theme.of(context).colorScheme.primary,
+                  title: context.l10n.appPreferences,
+                  subtitle: context.l10n.settingsDescription,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const AppPreferencesScreen(),
+                      ),
+                    );
+                  },
+                ),
+                LuciHubTile(
+                  icon: Icons.notifications_none,
+                  iconColor: Theme.of(context).colorScheme.primary,
+                  title: context.l10n.notifications,
+                  subtitle: context.l10n.notificationsHubSubtitle,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NotificationsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                LuciHubTile(
+                  icon: Icons.info_outline,
+                  iconColor: Theme.of(context).colorScheme.secondary,
+                  title: context.l10n.about,
+                  subtitle: context.l10n.aboutAppDescription,
+                  onTap: () => _showAboutDialog(context),
+                ),
+                LuciHubTile(
+                  icon: Icons.logout,
+                  iconColor: Theme.of(context).colorScheme.error,
+                  title: context.l10n.logout,
+                  subtitle: context.l10n.logoutDescription,
+                  titleColor: Theme.of(context).colorScheme.error,
+                  subtitleColor: Theme.of(context).colorScheme.error
+                      .withValues(alpha: 0.7),
+                  onTap: () => _showLogoutDialog(context),
+                ),
+              ],
+            ),
             LuciSectionHeader(context.l10n.deviceManagement),
             Builder(
               builder: (context) {
@@ -337,67 +398,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ],
                 );
               },
-            ),
-            LuciSectionHeader(context.l10n.application),
-            LuciHubSection(
-              tiles: [
-                LuciHubTile(
-                  icon: Icons.router,
-                  iconColor: Theme.of(context).colorScheme.primary,
-                  title: context.l10n.manageRouters,
-                  subtitle: context.l10n.manageRoutersDescription,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const ManageRoutersScreen(),
-                      ),
-                    );
-                  },
-                ),
-                LuciHubTile(
-                  icon: Icons.settings_outlined,
-                  iconColor: Theme.of(context).colorScheme.primary,
-                  title: context.l10n.appPreferences,
-                  subtitle: context.l10n.settingsDescription,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const AppPreferencesScreen(),
-                      ),
-                    );
-                  },
-                ),
-                LuciHubTile(
-                  icon: Icons.notifications_none,
-                  iconColor: Theme.of(context).colorScheme.primary,
-                  title: context.l10n.notifications,
-                  subtitle: context.l10n.notificationsHubSubtitle,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const NotificationsScreen(),
-                      ),
-                    );
-                  },
-                ),
-                LuciHubTile(
-                  icon: Icons.info_outline,
-                  iconColor: Theme.of(context).colorScheme.secondary,
-                  title: context.l10n.about,
-                  subtitle: context.l10n.aboutAppDescription,
-                  onTap: () => _showAboutDialog(context),
-                ),
-                LuciHubTile(
-                  icon: Icons.logout,
-                  iconColor: Theme.of(context).colorScheme.error,
-                  title: context.l10n.logout,
-                  subtitle: context.l10n.logoutDescription,
-                  titleColor: Theme.of(context).colorScheme.error,
-                  subtitleColor: Theme.of(context).colorScheme.error
-                      .withValues(alpha: 0.7),
-                  onTap: () => _showLogoutDialog(context),
-                ),
-              ],
             ),
           ],
         ),

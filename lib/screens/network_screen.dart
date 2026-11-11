@@ -10,6 +10,7 @@ import 'package:luci_mobile/screens/interfaces_screen.dart';
 import 'package:luci_mobile/screens/wifi_scan_screen.dart';
 import 'package:luci_mobile/screens/wireless_screen.dart';
 import 'package:luci_mobile/state/app_state_provider.dart';
+import 'package:luci_mobile/navigation/tab_bar_inset.dart';
 import 'package:luci_mobile/state/feature_providers.dart';
 import 'package:luci_mobile/widgets/luci_app_bar.dart';
 import 'package:luci_mobile/widgets/luci_feature_gate.dart';
@@ -92,6 +93,7 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> {
         onRefresh: () => ref.read(appStateProvider).fetchDashboardData(),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.only(bottom: TabBarInset.of(context)),
           children: [
             if (interfaces.isNotEmpty) _OverviewStrip(summary: interfaces),
             LuciSectionHeader(l10n.interfaces),
@@ -166,7 +168,10 @@ class _NetworkScreenState extends ConsumerState<NetworkScreen> {
     if (list is! List) return const [];
     return [
       for (final iface in list)
-        if (iface is Map && iface['interface'] != 'loopback')
+        if (iface is Map &&
+            iface['interface'] is String &&
+            iface['up'] is bool &&
+            iface['interface'] != 'loopback')
           (name: iface['interface'].toString(), up: iface['up'] == true),
     ];
   }

@@ -9,6 +9,7 @@ class ThroughputService {
   double _currentTxRate = 0;
   Map<String, dynamic>? _lastStats;
   DateTime? _lastTimestamp;
+  Set<String> _lastWanDevices = const {};
 
   // Per-interface tracking
   final Map<String, Queue<double>> _rxHistoryPerInterface = {};
@@ -39,6 +40,14 @@ class ThroughputService {
             (_hasDefaultRoute(i['route']) || _isNamedWan(i)))
           i,
     ];
+  }
+
+  /// Netifd's link state, independent of Internet reachability.
+  static bool? reportedWanLink(Map? dump) {
+    final states = upstreamInterfaces(dump)
+        .map((interface) => interface['up'])
+        .whereType<bool>();
+    return states.isEmpty ? null : states.contains(true);
   }
 
   /// netifd protocols whose traffic is carried inside another interface's.
@@ -188,91 +197,99 @@ class ThroughputService {
   }) {
     final now = DateTime.now();
 
-    // Always update per-interface throughput for all interfaces
-    if (networkData != null) {
-      networkData.forEach((devName, devData) {
-        _updateInterfaceThroughput(devName, devData, now);
-      });
+    if (networkData == null) {
+      clear();
+      return;
+    }
+    final missingDevices = _lastStatsPerInterface.keys
+        .where((name) => !networkData.containsKey(name))
+        .toList();
+    for (final name in missingDevices) {
+      _clearInterface(name);
     }
 
-    // Update overall throughput
+    // Always update per-interface throughput for all interfaces
+    networkData.forEach((devName, devData) {
+      _updateInterfaceThroughput(devName, devData, now);
+    });
+
     if (specificInterface != null && specificInterface.isNotEmpty) {
-      // If specific interface requested, use only that interface's data
-      if (networkData != null && networkData.containsKey(specificInterface)) {
-        _updateSpecificInterfaceThroughput(
-          specificInterface,
-          networkData[specificInterface],
-          now,
-        );
-      } else {
-        // Interface not found in data, clear current rates
-        _currentRxRate = 0;
-        _currentTxRate = 0;
-      }
-    } else {
-      // Update combined throughput as before
-      if (_lastStats == null || _lastTimestamp == null) {
-        _lastStats = networkData;
-        _lastTimestamp = now;
-        // Add an initial zero-rate data point so the UI has something to display
-        _addToHistory(0.0, 0.0);
-        return;
-      }
+      _updateSpecificInterfaceThroughput(specificInterface);
+      _lastStats = null;
+      _lastTimestamp = null;
+      return;
+    }
 
-      final elapsedSeconds =
-          now.difference(_lastTimestamp!).inMilliseconds / 1000.0;
-
-      // Only calculate throughput if we have a reasonable time difference
-      if (elapsedSeconds >= _minElapsedSeconds) {
-        final lastRx = _calculateTotalBytes(
-          _lastStats,
-          'rx_bytes',
-          wanDeviceNames: wanDeviceNames,
-        );
-        final lastTx = _calculateTotalBytes(
-          _lastStats,
-          'tx_bytes',
-          wanDeviceNames: wanDeviceNames,
-        );
-        final currentRx = _calculateTotalBytes(
-          networkData,
-          'rx_bytes',
-          wanDeviceNames: wanDeviceNames,
-        );
-        final currentTx = _calculateTotalBytes(
-          networkData,
-          'tx_bytes',
-          wanDeviceNames: wanDeviceNames,
-        );
-
-        // Calculate rates with a reasonable maximum to prevent spikes
-        final rxRate = max(0, (currentRx - lastRx) / elapsedSeconds);
-        final txRate = max(0, (currentTx - lastTx) / elapsedSeconds);
-
-        // Cap the rates to prevent unrealistic spikes
-        _currentRxRate = min(rxRate.toDouble(), _maxRate);
-        _currentTxRate = min(txRate.toDouble(), _maxRate);
-
-        _addToHistory(_currentRxRate, _currentTxRate);
-      }
-
+    final valid =
+        wanDeviceNames.isNotEmpty &&
+        wanDeviceNames.every((name) => _hasCounters(networkData[name]));
+    if (!valid) {
+      _resetCombined();
+      return;
+    }
+    final previous = _lastStats;
+    final timestamp = _lastTimestamp;
+    final sameDevices =
+        _lastWanDevices.length == wanDeviceNames.length &&
+        _lastWanDevices.containsAll(wanDeviceNames);
+    if (previous == null ||
+        timestamp == null ||
+        !sameDevices ||
+        wanDeviceNames.any(
+          (name) => _countersReset(previous[name], networkData[name]),
+        )) {
+      _resetCombined();
       _lastStats = networkData;
       _lastTimestamp = now;
+      _lastWanDevices = Set.of(wanDeviceNames);
+      return;
     }
+
+    final elapsed = now.difference(timestamp).inMilliseconds / 1000.0;
+    if (elapsed < _minElapsedSeconds) return;
+
+    final rx = _totalDelta(previous, networkData, wanDeviceNames, 'rx_bytes');
+    final tx = _totalDelta(previous, networkData, wanDeviceNames, 'tx_bytes');
+    _currentRxRate = min(rx / elapsed, _maxRate);
+    _currentTxRate = min(tx / elapsed, _maxRate);
+    _addToHistory(_currentRxRate, _currentTxRate);
+    _lastStats = networkData;
+    _lastTimestamp = now;
   }
 
-  /// Safely coerces a counter value to a finite [num]. Some firmware builds
-  /// report byte counters as strings; a hard cast would throw and kill the
-  /// update. Non-finite values (NaN/Infinity, also parseable from strings)
-  /// are rejected so they cannot propagate into rates and history.
-  static num _asNum(Object? value) {
-    if (value is num) return value.isFinite ? value : 0;
-    if (value is String) {
-      final parsed = num.tryParse(value);
-      return (parsed != null && parsed.isFinite) ? parsed : 0;
-    }
-    return 0;
+  static num? _asNum(Object? value) {
+    final number = value is num ? value : num.tryParse(value.toString());
+    return number != null && number.isFinite && number >= 0 ? number : null;
   }
+
+  static bool _hasCounters(Object? device) =>
+      device is Map<String, dynamic> &&
+      _asNum(_counterValue(device, 'rx_bytes')) != null &&
+      _asNum(_counterValue(device, 'tx_bytes')) != null;
+
+  static bool _countersReset(
+    Map<String, dynamic> previous,
+    Map<String, dynamic> next,
+  ) =>
+      _delta(previous, next, 'rx_bytes') < 0 ||
+      _delta(previous, next, 'tx_bytes') < 0;
+
+  static num _delta(
+    Map<String, dynamic> previous,
+    Map<String, dynamic> next,
+    String key,
+  ) =>
+      _asNum(_counterValue(next, key))! - _asNum(_counterValue(previous, key))!;
+
+  static num _totalDelta(
+    Map<String, dynamic> previous,
+    Map<String, dynamic> next,
+    Set<String> devices,
+    String key,
+  ) => devices.fold<num>(
+    0,
+    (sum, name) => sum + _delta(previous[name], next[name], key),
+  );
 
   /// Reads a byte counter that may live under `stats.<key>` or directly at
   /// `<key>`. Some firmware builds return a non-map `stats` value - treat
@@ -290,71 +307,52 @@ class ThroughputService {
     dynamic devData,
     DateTime now,
   ) {
-    if (devData == null || devData is! Map<String, dynamic>) return;
-
+    if (devData is! Map<String, dynamic> || !_hasCounters(devData)) {
+      _clearInterface(interface);
+      return;
+    }
     final lastStats = _lastStatsPerInterface[interface];
     final lastTimestamp = _lastTimestampPerInterface[interface];
-
-    if (lastStats == null || lastTimestamp == null) {
+    if (lastStats == null ||
+        lastTimestamp == null ||
+        _countersReset(lastStats, devData)) {
+      _clearInterface(interface);
       _lastStatsPerInterface[interface] = devData;
       _lastTimestampPerInterface[interface] = now;
-
-      // Initialize history for this interface
-      _rxHistoryPerInterface.putIfAbsent(interface, () => Queue<double>());
-      _txHistoryPerInterface.putIfAbsent(interface, () => Queue<double>());
-      _rxHistoryPerInterface[interface]!.add(0.0);
-      _txHistoryPerInterface[interface]!.add(0.0);
       return;
     }
 
-    final elapsedSeconds =
-        now.difference(lastTimestamp).inMilliseconds / 1000.0;
-
-    if (elapsedSeconds >= _minElapsedSeconds) {
-      // Handle both formats: stats.rx_bytes and direct rx_bytes, tolerating
-      // malformed `stats` values from non-standard firmware.
-      final lastRx = _asNum(_counterValue(lastStats, 'rx_bytes'));
-      final lastTx = _asNum(_counterValue(lastStats, 'tx_bytes'));
-      final currentRx = _asNum(_counterValue(devData, 'rx_bytes'));
-      final currentTx = _asNum(_counterValue(devData, 'tx_bytes'));
-
-      final rxRate = max(0, (currentRx - lastRx) / elapsedSeconds);
-      final txRate = max(0, (currentTx - lastTx) / elapsedSeconds);
-
-      _currentRxRatePerInterface[interface] = min(rxRate.toDouble(), _maxRate);
-      _currentTxRatePerInterface[interface] = min(txRate.toDouble(), _maxRate);
-
-      _addToInterfaceHistory(
-        interface,
-        _currentRxRatePerInterface[interface]!,
-        _currentTxRatePerInterface[interface]!,
-      );
-    }
-
+    final elapsed = now.difference(lastTimestamp).inMilliseconds / 1000.0;
+    if (elapsed < _minElapsedSeconds) return;
+    final rx = min(_delta(lastStats, devData, 'rx_bytes') / elapsed, _maxRate);
+    final tx = min(_delta(lastStats, devData, 'tx_bytes') / elapsed, _maxRate);
+    _currentRxRatePerInterface[interface] = rx;
+    _currentTxRatePerInterface[interface] = tx;
+    _addToInterfaceHistory(interface, rx, tx);
     _lastStatsPerInterface[interface] = devData;
     _lastTimestampPerInterface[interface] = now;
   }
 
-  void _updateSpecificInterfaceThroughput(
-    String interface,
-    dynamic devData,
-    DateTime now,
-  ) {
-    if (devData == null || devData is! Map<String, dynamic>) return;
+  void _clearInterface(String interface) {
+    _lastStatsPerInterface.remove(interface);
+    _lastTimestampPerInterface.remove(interface);
+    _rxHistoryPerInterface.remove(interface);
+    _txHistoryPerInterface.remove(interface);
+    _currentRxRatePerInterface.remove(interface);
+    _currentTxRatePerInterface.remove(interface);
+  }
 
-    final rxRate = _currentRxRatePerInterface[interface] ?? 0.0;
-    final txRate = _currentTxRatePerInterface[interface] ?? 0.0;
-
-    _currentRxRate = rxRate;
-    _currentTxRate = txRate;
+  void _updateSpecificInterfaceThroughput(String interface) {
+    _currentRxRate = _currentRxRatePerInterface[interface] ?? 0.0;
+    _currentTxRate = _currentTxRatePerInterface[interface] ?? 0.0;
+    _rxHistory.clear();
+    _txHistory.clear();
 
     // Use the interface's history for the main display
     final rxHist = _rxHistoryPerInterface[interface];
     final txHist = _txHistoryPerInterface[interface];
 
     if (rxHist != null && txHist != null) {
-      _rxHistory.clear();
-      _txHistory.clear();
       _rxHistory.addAll(rxHist);
       _txHistory.addAll(txHist);
     }
@@ -395,39 +393,18 @@ class ThroughputService {
     }
   }
 
-  num _calculateTotalBytes(
-    Map<String, dynamic>? networkData,
-    String key, {
-    Set<String>? wanDeviceNames,
-  }) {
-    if (networkData == null) return 0;
-    num total = 0;
-    networkData.forEach((devName, devData) {
-      // If wanDeviceNames is null, count all devices (old behavior).
-      // Otherwise, only count devices in the set.
-      if (wanDeviceNames == null || wanDeviceNames.contains(devName)) {
-        if (devData is Map<String, dynamic>) {
-          // Handle both formats: stats.rx_bytes and direct rx_bytes
-          if (devData['stats'] is Map<String, dynamic> &&
-              devData['stats'][key] != null) {
-            total += _asNum(devData['stats'][key]);
-          } else if (devData[key] != null) {
-            total += _asNum(devData[key]);
-          }
-        }
-      }
-    });
-    return total;
-  }
-
-  void clear() {
+  void _resetCombined() {
     _rxHistory.clear();
     _txHistory.clear();
     _currentRxRate = 0;
     _currentTxRate = 0;
     _lastStats = null;
     _lastTimestamp = null;
+    _lastWanDevices = const {};
+  }
 
+  void clear() {
+    _resetCombined();
     // Clear per-interface data
     _rxHistoryPerInterface.clear();
     _txHistoryPerInterface.clear();

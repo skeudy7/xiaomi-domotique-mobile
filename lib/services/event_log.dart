@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:luci_mobile/models/client.dart';
 import 'package:luci_mobile/models/router_event.dart';
 import 'package:luci_mobile/services/secure_storage_service.dart';
+import 'package:luci_mobile/services/throughput_service.dart';
 import 'package:luci_mobile/utils/logger.dart';
 
 /// A snapshot of the things the feed watches, taken on each poll.
@@ -22,11 +23,7 @@ class RouterObservation {
 
   final bool reachable;
 
-  /// Whether the WAN is up, or null when nothing had been fetched yet - a
-  /// clients poll that landed before the first dashboard read, say.
-  /// Unknown is not down: a baseline of "down" would report the internet
-  /// as restored on the next poll. A payload that *was* fetched and holds
-  /// no WAN block is a router with no uplink, which is down.
+  /// The reported WAN link state, null when uplink data is unavailable.
   final bool? wanUp;
   final Set<String> clientMacs;
 
@@ -217,6 +214,7 @@ class EventDeriver {
     DateTime? readAt,
   }) {
     final wan = dashboardData?['wan'];
+    final dump = dashboardData?['interfaceDump'];
     final sysInfo = dashboardData?['sysInfo'];
     final uptime = sysInfo is Map ? sysInfo['uptime'] : null;
     return RouterObservation(
@@ -224,7 +222,9 @@ class EventDeriver {
       // The dashboard only puts a `wan` block here when some interface
       // carries a default route, so its absence from a payload that was
       // fetched means there is no uplink - not that nobody looked.
-      wanUp: dashboardData == null ? null : (wan is Map && wan['up'] == true),
+      wanUp: dump is Map
+          ? ThroughputService.reportedWanLink(dump)
+          : (wan is Map && wan['up'] is bool ? wan['up'] as bool : null),
       bootTime: bootTimeOf(sysInfo),
       uptime: uptime is num ? uptime.toInt() : null,
       uptimeAt: readAt ?? dashboardData?['fetchedAt'] as DateTime?,

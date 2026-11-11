@@ -52,8 +52,16 @@ class LuCIApp extends ConsumerWidget {
 
   static ThemeData _theme(Brightness brightness) => ThemeData(
     colorScheme: ColorScheme.fromSeed(
-      seedColor: Colors.blue,
+      seedColor: const Color(0xFF427CDB),
       brightness: brightness,
+    ),
+    scaffoldBackgroundColor: brightness == Brightness.dark
+        ? const Color(0xFF10141D)
+        : null,
+    cardTheme: CardThemeData(
+      color: brightness == Brightness.dark ? const Color(0xFF1B2330) : null,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
     useMaterial3: true,
     // Edge-to-edge display handled natively in MainActivity

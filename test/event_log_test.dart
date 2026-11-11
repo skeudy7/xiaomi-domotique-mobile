@@ -357,14 +357,16 @@ void main() {
       expect(diff(known, o), isEmpty);
     });
 
-    // The dashboard puts a `wan` block here only while some interface
-    // carries a default route, so its absence from a payload that *was*
-    // fetched is how the WAN going down looks. Reading that as unknown
-    // made wanDown unreachable.
-    test('a fetched payload with no wan block is the WAN being down', () {
+    test('a fetched payload reports an explicitly down WAN link', () {
       final down = EventDeriver.observe(
         reachable: true,
-        dashboardData: const {'sysInfo': {}},
+        dashboardData: const {
+          'interfaceDump': {
+            'interface': [
+              {'interface': 'wan', 'up': false},
+            ],
+          },
+        },
         clients: const [],
       );
       expect(down.wanUp, isFalse);

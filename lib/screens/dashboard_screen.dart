@@ -9,7 +9,9 @@ import 'package:luci_mobile/state/app_state.dart';
 import 'package:luci_mobile/main.dart';
 import 'package:luci_mobile/navigation/luci_tab.dart';
 import 'package:luci_mobile/widgets/luci_app_bar.dart';
-import 'package:luci_mobile/widgets/luci_animation_system.dart';
+import 'package:luci_mobile/widgets/platform_ui/platform_ui.dart';
+import 'package:luci_mobile/state/monitoring_providers.dart';
+import 'package:luci_mobile/services/throughput_service.dart';
 import 'package:luci_mobile/models/glinet_data.dart';
 import 'package:luci_mobile/models/router.dart' as model;
 import 'package:luci_mobile/utils/wifi_utils.dart';
@@ -121,22 +123,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (hours > 0 || days > 0) parts.add('${hours}h');
     parts.add('${minutes}m');
     return parts.join(' ');
-  }
-
-  String _formatCpuLoad(
-    List<dynamic> load, {
-    int? cores,
-    bool showRawLoad = false,
-  }) {
-    if (load.isEmpty) return 'N/A';
-    final loadAvg = load[0] / 65536;
-    if (cores != null && cores > 0) {
-      final percent = (loadAvg / cores * 100).clamp(0, 100).toInt();
-      return '$percent%';
-    }
-    if (showRawLoad) return loadAvg.toStringAsFixed(2);
-    final percent = (loadAvg * 100).clamp(0, 100);
-    return '${percent.toStringAsFixed(0)}%';
   }
 
   String _deriveReleaseChannel(Map<String, dynamic>? release) {
@@ -389,12 +375,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       currentTxRate = appState.currentTxRate;
     }
 
-    // Show loading state if we don't have any throughput data yet
-    final hasValidData =
-        rxHistory.isNotEmpty ||
-        txHistory.isNotEmpty ||
-        currentRxRate > 0 ||
-        currentTxRate > 0; // Show data as soon as we have any throughput info
+    final hasValidData = rxHistory.isNotEmpty && txHistory.isNotEmpty;
     // Only show switching state if we're loading AND no dashboard data is available (true router switch)
     final isSwitchingRouter =
         appState.isLoading && appState.dashboardData == null;
@@ -422,29 +403,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
+          if (hasValidData && !isSwitchingRouter)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildSpeedIndicator(
+                    Icons.arrow_downward,
+                    Colors.green,
+                    '',
+                    currentRxRate,
+                  ),
+                  _buildSpeedIndicator(
+                    Icons.arrow_upward,
+                    Colors.blue,
+                    '',
+                    currentTxRate,
+                  ),
+                ],
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildSpeedIndicator(
-                  Icons.arrow_downward,
-                  Colors.green,
-                  '',
-                  isSwitchingRouter ? 0.0 : currentRxRate,
-                ),
-                _buildSpeedIndicator(
-                  Icons.arrow_upward,
-                  Colors.blue,
-                  '',
-                  isSwitchingRouter ? 0.0 : currentTxRate,
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 8),
           Expanded(
             child: Padding(
@@ -541,7 +523,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             Text(
                               isSwitchingRouter
                                   ? context.l10n.switchingRouter
-                                  : context.l10n.collectingThroughput,
+                                  : context.l10n.noDataAvailable,
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(
                                     color: Theme.of(context)
@@ -742,27 +724,33 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final sysInfo = appState.dashboardData?['sysInfo'] as Map<String, dynamic>?;
 
     final uptime = sysInfo?['uptime'] as int?;
-    final uptimeValue = uptime != null ? _formatUptime(uptime) : 'N/A';
+    final uptimeValue = uptime != null ? _formatUptime(uptime) : '—';
 
-    final cpuLoad = sysInfo?['load'] as List<dynamic>?;
+    final load = sysInfo?['load'];
+    final firstLoad = load is List && load.isNotEmpty ? load.first : null;
+    final cpuLoadValue =
+        firstLoad is num && firstLoad.isFinite && firstLoad >= 0
+        ? (firstLoad / 65536).toStringAsFixed(2)
+        : '—';
+
+    final memory = sysInfo?['memory'];
+    final totalMem = memory is Map ? memory['total'] : null;
+    final freeMem = memory is Map ? memory['free'] : null;
+    final bufferedMem = memory is Map ? memory['buffered'] : null;
+    final reportedAvailable = memory is Map ? memory['available'] : null;
+    final availableMem = reportedAvailable is int
+        ? reportedAvailable
+        : (freeMem is int && bufferedMem is int ? freeMem + bufferedMem : null);
+    final memoryValue =
+        totalMem is int &&
+            totalMem > 0 &&
+            availableMem != null &&
+            availableMem >= 0 &&
+            availableMem <= totalMem
+        ? '${((totalMem - availableMem) / totalMem * 100).toStringAsFixed(0)} %'
+        : '—';
+
     final glInetData = appState.dashboardData?['glinet'] as GlInetData?;
-    final cpuCores = glInetData?.cpuCores;
-    final cpuLoadValue = cpuLoad != null
-        ? _formatCpuLoad(
-            cpuLoad,
-            cores: cpuCores,
-            showRawLoad: glInetData != null && cpuCores == null,
-          )
-        : 'N/A';
-
-    final totalMem = sysInfo?['memory']?['total'] as int? ?? 0;
-    final freeMem = sysInfo?['memory']?['free'] as int? ?? 0;
-    final bufferedMem = sysInfo?['memory']?['buffered'] as int? ?? 0;
-    final usedMem = totalMem - freeMem - bufferedMem;
-    final memoryValue = totalMem > 0
-        ? '${(usedMem / totalMem * 100).toStringAsFixed(0)}%'
-        : 'N/A';
-
     final cpuTemp = glInetData?.cpuTemperature;
     final fanActive = glInetData?.fanActive;
     final fanSpeed = glInetData?.fanSpeed;
@@ -771,9 +759,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       Expanded(
         child: _buildVitalsColumn(
           context,
-          label: glInetData == null
-              ? context.l10n.cpuLoad
-              : (cpuCores == null ? context.l10n.load : context.l10n.cpu),
+          label: context.l10n.cpuLoad,
           value: cpuLoadValue,
         ),
       ),
@@ -1720,81 +1706,65 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () => appState.fetchDashboardData(),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isLandscape =
-              MediaQuery.of(context).orientation == Orientation.landscape;
+      onRefresh: () async {
+        await appState.fetchDashboardData();
+        if (mounted) ref.invalidate(selectedInventoryProvider);
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 20 + TabBarInset.of(context)),
+        children: [
+          _buildDeviceInfoCard(appState),
+          const SizedBox(height: 8),
+          _buildNetworkStatus(appState),
+          const SizedBox(height: 8),
+          _buildSystemVitalsCard(appState),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 185 + MediaQuery.textScalerOf(context).scale(60),
+            child: _buildRealtimeThroughputCard(appState),
+          ),
+          const SizedBox(height: 8),
+          _buildWirelessNetworksCard(appState),
+          const SizedBox(height: 8),
+          _buildInterfaceStatusCards(appState),
+        ],
+      ),
+    );
+  }
 
-          // Split layout handling to avoid Expanded widget conflicts with staggered animations
-          if (isLandscape) {
-            final landscapeContent = [
-              const SizedBox(height: 16),
-              _buildDeviceInfoCard(appState),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 240,
-                child: _buildRealtimeThroughputCard(appState),
-              ),
-              const SizedBox(height: 12),
-              _buildSystemVitalsCard(appState),
-              const SizedBox(height: 12),
-              _buildWirelessNetworksCard(appState),
-              const SizedBox(height: 12),
-              _buildInterfaceStatusCards(appState),
-              const SizedBox(height: 12),
-              // Extra padding to ensure scroll behavior for RefreshIndicator
-              SizedBox(height: 100 + TabBarInset.of(context)),
-            ];
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: LuciStaggeredAnimation(
-                  staggerDelay: const Duration(milliseconds: 50),
-                  children: landscapeContent,
-                ),
-              ),
-            );
-          } else {
-            // Portrait mode: keep the complete dashboard on one screen.
-            return RefreshIndicator(
-              onRefresh: () => appState.fetchDashboardData(),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: SizedBox(
-                  height: constraints.maxHeight,
-                  // Clear of the iOS 26 tab bar that floats over the page.
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      0,
-                      16,
-                      TabBarInset.of(context),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 4),
-                        _buildDeviceInfoCard(appState),
-                        const SizedBox(height: 4),
-                        Expanded(child: _buildRealtimeThroughputCard(appState)),
-                        const SizedBox(height: 4),
-                        _buildSystemVitalsCard(appState),
-                        const SizedBox(height: 4),
-                        _buildWirelessNetworksCard(appState),
-                        const SizedBox(height: 4),
-                        _buildInterfaceStatusCards(appState),
-                        const SizedBox(height: 4),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }
-        },
+  Widget _buildNetworkStatus(AppState appState) {
+    final l10n = context.l10n;
+    final dump = appState.dashboardData?['interfaceDump'];
+    final wan = ThroughputService.reportedWanLink(dump is Map ? dump : null);
+    final inventory = ref.watch(selectedInventoryProvider);
+    final confirmed = inventory.isLoading || inventory.hasError
+        ? null
+        : inventory.value?.where((client) => client.isOnline == true).length;
+    return AdaptiveCard(
+      borderRadius: BorderRadius.circular(20),
+      child: Column(
+        children: [
+          AdaptiveListTile(
+            leading: const Icon(Icons.public),
+            title: Text(l10n.wanLink),
+            subtitle: Text(switch (wan) {
+              true => l10n.active,
+              false => l10n.offline,
+              null => l10n.unknown,
+            }),
+          ),
+          AdaptiveListTile(
+            leading: const Icon(Icons.devices_other),
+            title: Text(l10n.clients),
+            subtitle: Text(l10n.presenceConfirmed),
+            trailing: Text(
+              confirmed?.toString() ??
+                  (inventory.isLoading ? '…' : l10n.unknown),
+            ),
+            onTap: () => appState.requestTab(LuciTab.clients),
+          ),
+        ],
       ),
     );
   }

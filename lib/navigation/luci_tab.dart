@@ -6,8 +6,8 @@
 /// silently pointed somewhere else. Naming them makes that a compile error.
 enum LuciTab {
   dashboard,
-  network,
   clients,
+  network,
   insights,
   settings;
 

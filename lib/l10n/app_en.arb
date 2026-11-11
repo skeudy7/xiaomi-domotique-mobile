@@ -728,8 +728,8 @@
   "clearActivity": "Clear activity",
   "eventRouterUnreachable": "Router became unreachable",
   "eventRouterBack": "Router came back",
-  "eventWanDown": "Internet connection went down",
-  "eventWanUp": "Internet connection came back",
+  "eventWanDown": "WAN link went down",
+  "eventWanUp": "WAN link came back",
   "eventClientJoined": "{client} joined the network",
   "@eventClientJoined": {
     "placeholders": {
@@ -891,5 +891,14 @@
   "targetPlatform": "Target platform",
   "kernelVersion": "Kernel version",
   "systemDetails": "System details",
-  "allowedIps": "Allowed IPs"
+  "allowedIps": "Allowed IPs",
+  "wanLink": "WAN link",
+  "presenceConfirmed": "Confirmed online",
+  "presenceUnknown": "Presence unconfirmed",
+  "recentlySeenDevice": "Recently discovered",
+  "localMacAddress": "Private or locally assigned MAC",
+  "managementConnection": "Connection to LuCI",
+  "wanInputPolicy": "WAN zone input policy",
+  "configuredWanForwards": "Enabled WAN port forwards",
+  "firewallConfigSnapshot": "Configuration reported by OpenWrt"
 }
